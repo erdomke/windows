@@ -7,22 +7,13 @@
  * Licensed under the MIT license
  */
 
-// TODO: Deal with multiple small windows
-//       Deal with hash changes
+// TODO: Deal with hash changes
 
 ;(function ( $, window, document, undefined ) {
 
 
 var that = this,
         pluginName = 'windows',
-        defaults = {
-          snapping: true,
-          snapSpeed: 500,
-          snapInterval: 1100,
-          onScroll: function(){},
-          onSnapComplete: function(){},
-          onWindowEnter: function(){}
-        },
         options = {},
         $w = $(window),
         s = 0, // scroll amount
@@ -36,41 +27,22 @@ var that = this,
     function windows( element, customOptions ) {
 
       this.element = element;
-      options = options = $.extend( {}, defaults, customOptions) ;
-      this._defaults = defaults;
+      options = options = $.extend( {}, $.fn[pluginName].defaults, customOptions) ;
+      this._defaults = $.fn[pluginName].defaults;
       this._name = pluginName;
       $windows.push(element);
-      var isOnScreen = $(element).isOnScreen();
+      var isOnScreen = new WinStats($(element),viewport).isOnScreen();
       $(element).data('onScreen', isOnScreen);
       if(isOnScreen) options.onWindowEnter($(element));
-
     }
   
-    /**
-     * Get ratio of element's visibility on screen
-     * @return {Number} ratio 0-1
-     */
-    $.fn.ratioVisible = function() {
-      return new WinStats(this, viewport).ratioVisible();
-    };
+    // PRIVATE API ----------------------------------------------------------
 
     /**
-     * Is section currently on screen?
-     * @return {Boolean}
-     */
-    $.fn.isOnScreen = function(){
-      return new WinStats(this, viewport).isOnScreen();
-    };
-
-    var _nvl = function(testVal, defaultVal) {
-      return (testVal === null ? defaultVal : testVal);
-    }
-  
-    /**
-     * Get section that is mostly visible on screen
+     * Get section that would need to move the least to be at its snap position.
      * @return {jQuery el}
      */
-    var _getCurrentWindow = $.fn.getCurrentWindow = function(){
+    var _getCurrentWindow = function(){
       var minScroll = 99999,
           minElem = $windows[0],
           stats = null,
@@ -78,10 +50,10 @@ var that = this,
       $.each($windows, function(i){
         stats = new WinStats($(this), viewport);
         if (stats.isOnScreen()) {
-          scrollAmt = Math.abs(_nvl(stats.snapPosition(), viewport.scrollTop()) - viewport.scrollTop());
+          scrollAmt = Math.abs(stats.snapPosition() - viewport.scrollTop());
           if (scrollAmt < minScroll) {
             minScroll = scrollAmt;
-            minElem = $(this)
+            minElem = $(this);
           }
         }
       });
@@ -89,9 +61,7 @@ var that = this,
       return $(minElem);
     };
 
-
-    // PRIVATE API ----------------------------------------------------------
-
+  
     function WinStats(window, viewport) {
       var relTop = Math.round(window.offset().top - viewport.scrollTop());
       var relBot = Math.round(relTop + window.height());
@@ -126,32 +96,20 @@ var that = this,
         }
         return scrollTo;
       }
-      this.ratioVisible = function() {
-        if(!self.isOnScreen()) return 0;
-        
-        // If the entire element is on the screen return 1 (yes, I know it is not really one)
-        if (relTop >= 0 && relBot <= viewHeight) return 1;
-        
-        // Calculate the real ratio
-        var dispHeight = (relTop >= 0) ? viewHeight - relTop : viewHeight;
-        if (relBot < viewHeight) dispHeight -= viewHeight - relBot;
-        return dispHeight / viewHeight;
-      }
       this.snapPosition = function() {
-        var scrollTo = null;
+        var scrollTo = 0;
         if (window.height() < viewHeight) {
           scrollTo = relTop - (viewHeight - window.height()) / 2;
-          if (Math.abs(scrollTo) < 2) scrollTo = null;
+          if (Math.abs(scrollTo) < 2) scrollTo = 0;
         } else if (relTop > 0) {
           scrollTo = relTop;
         } else if (relBot <= viewHeight) {
           scrollTo = relBot - viewHeight;
         } 
-        if (scrollTo !== null) {
-          scrollTo += viewport.scrollTop();
-          if ((scrollTo + viewHeight) > viewport.docHeight()) scrollTo = viewport.docHeight() - viewHeight;
-          if (scrollTo < 0) scrollTo = 0;
-        }
+        
+        scrollTo += viewport.scrollTop();
+        if ((scrollTo + viewHeight) > viewport.docHeight()) scrollTo = viewport.docHeight() - viewHeight;
+        if (scrollTo < 0) scrollTo = 0;  
         return scrollTo;
       }
       this.window = function() {
@@ -163,12 +121,8 @@ var that = this,
      * Window scroll event handler
      * @return null
      */
-    var lastScrollTop = 0;
-    var dir = 0;
     var _onScroll = function(){
       s = $w.scrollTop();
-      dir = s - lastScrollTop;
-      lastScrollTop = s;
 
       _snapWindow();
 
@@ -177,7 +131,7 @@ var that = this,
       // notify on new window entering
       $.each($windows, function(i){
         var $this = $(this),
-            isOnScreen = $this.isOnScreen();
+            isOnScreen = new WinStats($this,viewport).isOnScreen();
         if(isOnScreen){
           if(!$this.data('onScreen')) options.onWindowEnter($this);
         }
@@ -190,28 +144,32 @@ var that = this,
     };
   
     var _onKeydown = function(e) {
-      var scrollInfo = null;
+      if (options.enableKeys) {
+        var scrollInfo = null;
       
-      switch(e.which) {
-        case 34:  // page down
-          scrollInfo = _nextScroll();
-          break;
-        case 33:  // page up
-          scrollInfo = _prevScroll();
-          break;
-        case 32:  // space bar
-          if (e.altKey === true || e.controlKey === true) return;
-          if (e.shiftKey === true) {
-            scrollInfo = _prevScroll();
-          } else {
+        switch(e.which) {
+          case 40:  // down arrow
+          case 34:  // page down
             scrollInfo = _nextScroll();
-          }
-          break;
-      }
-      
-      if (scrollInfo !== null) {
-        viewport.scrollToPosition(scrollInfo.pos, scrollInfo.win);
-        e.preventDefault();
+            break;
+          case 38:  // up arrow
+          case 33:  // page up
+            scrollInfo = _prevScroll();
+            break;
+          case 32:  // space bar
+            if (e.altKey === true || e.controlKey === true) return;
+            if (e.shiftKey === true) {
+              scrollInfo = _prevScroll();
+            } else {
+              scrollInfo = _nextScroll();
+            }
+            break;
+        }
+        
+        if (scrollInfo !== null) {
+          viewport.scrollToPosition(scrollInfo.pos, scrollInfo.win);
+          e.preventDefault();
+        }
       }
     };
   
@@ -297,19 +255,21 @@ var that = this,
           lastWin= win;
           var completeCalled = false;
           
-          $('html:not(:animated),body:not(:animated)').stop(true).animate({scrollTop: newScrollTop }, options.snapSpeed, function () { 
+          $('html:not(:animated),body:not(:animated)').stop(true).animate({scrollTop: newScrollTop }, options.scrollSpeed, options.easing, function () { 
             isAnimating = false;
-            completeCalled = true;
-            options.onSnapComplete(win);
+            if (!completeCalled) {
+              completeCalled = true;
+              options.onSnapComplete(win);
+            }
           });
         }
       }
       this.scrollToPositionDelay = function (scrollTo, win) {
-        if (scrollTo === null) return;
+        if (scrollTo === null || scrollTo === self.scrollTop()) return;
         if (timeout) clearTimeout(timeout);
         timeout = setTimeout(function() {
           self.scrollToPosition(scrollTo, win);
-        }, options.snapInterval);
+        }, options.scrollDelay);
       }
     })($w);
   
@@ -335,6 +295,41 @@ var that = this,
       $w.resize(_onResize);
       $w.keydown(_onKeydown);
 
+      if ('string' === typeof options) {
+        var result = [];
+        switch (options) {
+          case 'getCurrentWindow':
+            return _getCurrentWindow();
+          case 'isOnScreen':
+            this.each(function(i) {
+              result.push(new WinStats($(this), viewport).isOnScreen());
+            });
+            break;
+          case 'nextView':
+            var scrollInfo = _nextScroll();
+            viewport.scrollToPosition(scrollInfo.pos, scrollInfo.win);
+            return this;
+          case 'prevView':
+            var scrollInfo = _prevScroll();
+            viewport.scrollToPosition(scrollInfo.pos, scrollInfo.win);
+            return this;
+          case 'snapPosition':
+            this.each(function(i) {
+              result.push(new WinStats($(this), viewport).snapPosition());
+            });
+            break;
+        }
+        
+        switch (result.length) {
+          case 0:
+            return null;
+          case 1:
+            return result[0];
+          default:
+            return result;
+        }
+      }
+      
       return this.each(function(i) {
         if (!$.data(this, 'plugin_' + pluginName)) {
           $.data(this, 'plugin_' + pluginName,
@@ -342,5 +337,16 @@ var that = this,
         }
       });
     };
+  
+    $.fn[pluginName].defaults = defaults = {
+      snapping: true,
+      scrollSpeed: 500,
+      scrollDelay: 1100,
+      enableKeys: true,
+      easing: 'swing',
+      onScroll: function(){},
+      onSnapComplete: function(){},
+      onWindowEnter: function(){}
+    }
 
 })( jQuery, window, document );

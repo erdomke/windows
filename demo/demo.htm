@@ -65,25 +65,30 @@
     
     <section class="window">
       <div class="content">
-        <h2>instructions</h2>
+        <h2>instructions <small>(cont.)</small></h2>
         <h3>configuration</h3>
         <p>use the appropriate selector to find your windows, and call the <code>windows()</code> method</p>
         <pre>
 &lt;script src="jquery.windows.js"&gt;&lt;/script&gt;
 
 &lt;script&gt;
+<span class="comment">// Defaults:</span>
 $('.window').windows({
-  snapping: true,     // Turn on snapping
-  snapSpeed: 500,     // How quickly to snap to a window
-  snapInterval: 1100, // Delay after scroll completes before snapping starts
+  snapping: true,     <span class="comment">// [bool] turn on snapping</span>
+  scrollSpeed: 500,   <span class="comment">// [int] how quickly to snap to a window (in millisecons)</span>
+  scrollDelay: 1100,  <span class="comment">// [int] delay after scroll completes before snapping starts</span>
+  enableKeys: true,   <span class="comment">// [bool] whether to allow keyboard shortcuts</span>
+  easing: 'swing',    <span class="comment">// [string] easing animation</span>
+                      <span class="comment">// (don't forget to add the easing plugin)</span>
   onScroll: function(scrollPos){
-    // scrollPos:Number
+    <span class="comment">// after the window scrolls</span>
+    <span class="comment">// scrollPos = [int] scrollTop value for the window</span>
   },
   onSnapComplete: function($el){
-    // after window ($el) snaps into place
+    <span class="comment">// after window ($el [jQuery element]) snaps into place</span>
   },
   onWindowEnter: function($el){
-    // when new window ($el) enters viewport
+    <span class="comment">// when window ($el [jQuery element]) enters viewport</span>
   }
 });
 &lt;/script&gt;
@@ -95,14 +100,28 @@ $('.window').windows({
       <div class="content">
         <h2>api</h2>
         <pre>
-// returns ratio 0-1
-$('.window:eq(0)').ratioVisible();
+<span class="comment">// [jQuery element] current window</span>
+$.fn.windows('getCurrentWindow');
 
-// returns boolean of whether or not is visible on screen
-$('.window:eq(0)').isOnScreen();
+<span class="comment">// [bool] whether or not element is visible on screen</span>
+$('.window:eq(0)').windows('isOnScreen');
 
-// get most visible window
-$('.window').getCurrentWindow();
+  <span class="comment">// [array of bool]</span>
+  $('.window').windows('isOnScreen');
+
+<span class="comment">// [jQuery element from selector] navigates to the next view</span>
+<span class="comment">// equivalent to page down, space, or down arrow</span>
+$('.window').windows('nextView');
+
+<span class="comment">// [jQuery element from selector] navigates to the previous view</span>
+<span class="comment">// equivalent to page up, shift+space, or up arrow</span>
+$('.window').windows('prevView');
+
+<span class="comment">// [int] where the view would be scrolled to in order to show the window</span>
+$('.window:eq(0)').windows('snapPosition');
+
+  <span class="comment">// [array of int]</span>
+  $('.window').windows('snapPosition');
         </pre>
       </div>
     </section>
@@ -111,7 +130,7 @@ $('.window').getCurrentWindow();
       <div class="content">
         <h2>credits</h2>
         
-        <p>original code and inspiration from @nick-jonas [<a href="http://www.workofjonas.com">http://www.workofjonas.com</a>]</p>
+        <p>original code and inspiration from <a href="http://nick-jonas.github.io/windows/">@nick-jonas</a></p>
         
         <a href="http://www.github.com/nick-jonas/windows/tarball/master" title="Download Me!" id="btn-wrap">
           <span class="title">Download Me</span>
@@ -140,11 +159,11 @@ $('.window').getCurrentWindow();
 
         $windows.windows({
           snapping: true,
-          snapSpeed: 100,
-          snapInterval: 300,
-          onScroll: function(s){},
-          onSnapComplete: function($el){},
-          onWindowEnter: function($el){}
+          scrollSpeed: 100,
+          scrollDelay: 300,
+          onScroll: function(s) {},
+          onSnapComplete: function($el) {},
+          onWindowEnter: function($el) {}
         });
 
       });

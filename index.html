@@ -1,0 +1,165 @@
+
+<!doctype html>
+<html>
+  <head>
+    <title>windows</title>
+
+    <link rel="stylesheet" href="css/demo-main.css">
+  </head>
+  <body>
+
+    <!-- NOTE: each "window" is a section element with class .window -->
+    
+    <section class="window">
+      <div class="content">
+        <h1>windows</h1>
+        <p>a handy, loosely-coupled jQuery plugin for scrolling windows</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p style="text-align:right;"><small>navigate using the scroll bar, mouse wheel, or keyboard</small></p>
+      </div>
+    </section>
+
+    <section class="window">
+      <div class="content">
+        <h2>windows can take up the full screen <small>(like this one)</small></h2>
+      </div>
+    </section>
+    
+    <section class="window" style="height:30%">
+      <div class="content">
+        <h2>... or they can take up a small portion of the screen</h2>
+      </div>
+    </section>
+
+    <section class="window" style="height:200%">
+      <div class="content">
+        <h2>...</h2>
+        <h2>or</h2>
+        <h2>they</h2>
+        <h2>can</h2>
+        <h2>take</h2>
+        <h2>up</h2>
+        <h2>more</h2>
+        <h2>than</h2>
+        <h2>one</h2>
+        <h2>screen</h2>
+      </div>
+    </section>
+    
+    <section class="window">
+      <div class="content">
+        <h2>instructions</h2>
+        <h3>markup</h3>
+        <p>use whatever markup you want, e.g.</p>
+        <pre>
+&lt;section class="window"&gt;
+  Some content
+&lt;/section&gt;
+&lt;section class="window"&gt;
+  Some more content
+&lt;/section&gt;
+        </pre>
+      </div>
+    </section>
+    
+    <section class="window">
+      <div class="content">
+        <h2>instructions <small>(cont.)</small></h2>
+        <h3>configuration</h3>
+        <p>use the appropriate selector to find your windows, and call the <code>windows()</code> method</p>
+        <pre>
+&lt;script src="jquery.windows.js"&gt;&lt;/script&gt;
+
+&lt;script&gt;
+<span class="comment">// Defaults:</span>
+$('.window').windows({
+  snapping: true,     <span class="comment">// [bool] turn on snapping</span>
+  scrollSpeed: 500,   <span class="comment">// [int] how quickly to snap to a window (in millisecons)</span>
+  scrollDelay: 1100,  <span class="comment">// [int] delay after scroll completes before snapping starts</span>
+  enableKeys: true,   <span class="comment">// [bool] whether to allow keyboard shortcuts</span>
+  easing: 'swing',    <span class="comment">// [string] easing animation</span>
+                      <span class="comment">// (don't forget to add the easing plugin)</span>
+  onScroll: function(scrollPos){
+    <span class="comment">// after the window scrolls</span>
+    <span class="comment">// scrollPos = [int] scrollTop value for the window</span>
+  },
+  onSnapComplete: function($el){
+    <span class="comment">// after window ($el [jQuery element]) snaps into place</span>
+  },
+  onWindowEnter: function($el){
+    <span class="comment">// when window ($el [jQuery element]) enters viewport</span>
+  }
+});
+&lt;/script&gt;
+        </pre>
+      </div>
+    </section>
+
+    <section class="window">
+      <div class="content">
+        <h2>api</h2>
+        <pre>
+<span class="comment">// [jQuery element] current window</span>
+$.fn.windows('getCurrentWindow');
+
+<span class="comment">// [bool] whether or not element is visible on screen</span>
+$('.window:eq(0)').windows('isOnScreen');
+
+  <span class="comment">// [array of bool]</span>
+  $('.window').windows('isOnScreen');
+
+<span class="comment">// [jQuery element from selector] navigates to the next view</span>
+<span class="comment">// equivalent to page down, space, or down arrow</span>
+$('.window').windows('nextView');
+
+<span class="comment">// [jQuery element from selector] navigates to the previous view</span>
+<span class="comment">// equivalent to page up, shift+space, or up arrow</span>
+$('.window').windows('prevView');
+
+<span class="comment">// [int] where the view would be scrolled to in order to show the window</span>
+$('.window:eq(0)').windows('snapPosition');
+
+  <span class="comment">// [array of int]</span>
+  $('.window').windows('snapPosition');
+        </pre>
+      </div>
+    </section>
+
+    <section class="window">
+      <div class="content">
+        <h2>credits</h2>
+        
+        <p>original code and inspiration from <a href="http://nick-jonas.github.io/windows/">@nick-jonas</a></p>
+        
+        <p>&nbsp;</p>
+        
+        <h2>View on <a href="https://github.com/erdomke/windows">GitHub</a></h2>
+
+      </div>
+    </section>
+
+    
+    <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src="js/jquery.windows.js"></script>
+    
+    <script>
+
+      $(document).ready(function(){
+
+        var $windows = $('.window');
+
+        $windows.windows({
+          snapping: true,
+          scrollSpeed: 100,
+          scrollDelay: 300,
+          onScroll: function(s) {},
+          onSnapComplete: function($el) {},
+          onWindowEnter: function($el) {}
+        });
+
+      });
+    </script>
+
+  </body>
+</html>

@@ -1,4 +1,4 @@
 windows
 =======
 
- jQuery plugin for full-screen scrolling windows
+a handy, loosely-coupled jQuery plugin for scrolling windows

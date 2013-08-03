@@ -7,6 +7,9 @@
  * Licensed under the MIT license
  */
 
+// TODO: Deal with multiple small windows
+//       Deal with hash changes
+
 ;(function ( $, window, document, undefined ) {
 
 
@@ -23,7 +26,6 @@ var that = this,
         options = {},
         $w = $(window),
         s = 0, // scroll amount
-        t = null, // timeout
         $windows = [];
 
     /**
@@ -49,7 +51,7 @@ var that = this,
      * @return {Number} ratio 0-1
      */
     $.fn.ratioVisible = function() {
-      return new WinStats(this, $w).ratioVisible();
+      return new WinStats(this, viewport).ratioVisible();
     };
 
     /**
@@ -57,24 +59,34 @@ var that = this,
      * @return {Boolean}
      */
     $.fn.isOnScreen = function(){
-      return new WinStats(this, $w).isOnScreen();
+      return new WinStats(this, viewport).isOnScreen();
     };
 
+    var _nvl = function(testVal, defaultVal) {
+      return (testVal === null ? defaultVal : testVal);
+    }
+  
     /**
      * Get section that is mostly visible on screen
      * @return {jQuery el}
      */
     var _getCurrentWindow = $.fn.getCurrentWindow = function(){
-      var maxPerc = 0,
-          maxElem = $windows[0];
+      var minScroll = 99999,
+          minElem = $windows[0],
+          stats = null,
+          scrollAmt = 0;
       $.each($windows, function(i){
-        var perc = $(this).ratioVisible();
-        if(Math.abs(perc) > Math.abs(maxPerc)){
-          maxElem = $(this);
-          maxPerc = perc;
+        stats = new WinStats($(this), viewport);
+        if (stats.isOnScreen()) {
+          scrollAmt = Math.abs(_nvl(stats.snapPosition(), viewport.scrollTop()) - viewport.scrollTop());
+          if (scrollAmt < minScroll) {
+            minScroll = scrollAmt;
+            minElem = $(this)
+          }
         }
       });
-      return $(maxElem);
+      
+      return $(minElem);
     };
 
 
@@ -135,7 +147,11 @@ var that = this,
         } else if (relBot <= viewHeight) {
           scrollTo = relBot - viewHeight;
         } 
-        if (scrollTo !== null) scrollTo += viewport.scrollTop();
+        if (scrollTo !== null) {
+          scrollTo += viewport.scrollTop();
+          if ((scrollTo + viewHeight) > viewport.docHeight()) scrollTo = viewport.docHeight() - viewHeight;
+          if (scrollTo < 0) scrollTo = 0;
+        }
         return scrollTo;
       }
       this.window = function() {
@@ -147,8 +163,12 @@ var that = this,
      * Window scroll event handler
      * @return null
      */
+    var lastScrollTop = 0;
+    var dir = 0;
     var _onScroll = function(){
       s = $w.scrollTop();
+      dir = s - lastScrollTop;
+      lastScrollTop = s;
 
       _snapWindow();
 
@@ -170,49 +190,36 @@ var that = this,
     };
   
     var _onKeydown = function(e) {
-      var scrollTo = null;
+      var scrollInfo = null;
       
       switch(e.which) {
         case 34:  // page down
-          scrollTo = _nextScroll();
-          console.log('Down ' + scrollTo);
+          scrollInfo = _nextScroll();
           break;
         case 33:  // page up
-          scrollTo = _prevScroll();
-          console.log('Up ' + scrollTo);
+          scrollInfo = _prevScroll();
           break;
         case 32:  // space bar
+          if (e.altKey === true || e.controlKey === true) return;
           if (e.shiftKey === true) {
-            scrollTo = _prevScroll();
+            scrollInfo = _prevScroll();
           } else {
-            scrollTo = _nextScroll();
+            scrollInfo = _nextScroll();
           }
           break;
       }
       
-      if (scrollTo !== null) {
-        // Keep trying recursively until it works.  (Normally only one extra time should suffice)
-        var animationComplete = false;
-        var attempts = 0;
-        
-        function TryAnimation() {
-          if (!animationComplete && attempts < 10) {
-            attempts++;
-            $('html:not(:animated),body:not(:animated)').stop(true).animate({scrollTop: scrollTo }, options.snapSpeed, function () { animationComplete = true; });
-            setTimeout(TryAnimation, options.snapSpeed+10);
-          }
-        }
-        TryAnimation();
-
+      if (scrollInfo !== null) {
+        viewport.scrollToPosition(scrollInfo.pos, scrollInfo.win);
         e.preventDefault();
       }
     };
   
     var _prevScroll = function() {
-      var stats = new WinStats(_getCurrentWindow(), $w);
-      var scrollTo = stats.prevInternalFrame();
+      var stats = new WinStats(_getCurrentWindow(), viewport);
+      var result = { pos: stats.prevInternalFrame(), win: stats.window() }
       
-      if (scrollTo === null) {
+      if (result.pos === null) {
         var maxOffset = -1;
         var maxElem = null;
         var currOffset = stats.window().offset().top;
@@ -226,18 +233,19 @@ var that = this,
         });
         
         if (maxElem) {
-          stats = new WinStats($(maxElem), $w);
-          scrollTo = stats.snapPosition();
+          stats = new WinStats($(maxElem), viewport);
+          result.pos = stats.snapPosition();
+          result.win = stats.window();
         }
       }
-      return scrollTo;
+      return result;
     }
   
     var _nextScroll = function() {
-      var stats = new WinStats(_getCurrentWindow(), $w);
-      var scrollTo = stats.nextInternalFrame();
+      var stats = new WinStats(_getCurrentWindow(), viewport);
+      var result = { pos: stats.nextInternalFrame(), win: stats.window() }
       
-      if (scrollTo === null) {
+      if (result.pos === null) {
         var minOffset = 999999;
         var minElem = null;
         var currOffset = _getCurrentWindow().offset().top;
@@ -251,34 +259,66 @@ var that = this,
         });
         
         if (minElem) {
-          stats = new WinStats($(minElem), $w);
-          scrollTo = stats.snapPosition();
+          stats = new WinStats($(minElem), viewport);
+          result.pos = stats.snapPosition();
+          result.win = stats.window();
         }
       }
-      return scrollTo;
+      return result;
     }
-
-    var _snapWindow = function(){
-      // clear timeout if exists
-      if(t){clearTimeout(t);}
+    
+    var viewport = new (function (view) {
+      var isAnimating = false;
+      var newScrollTop;
+      var lastWin = null;
+      var self = this;
+      var timeout = null;
+      
+      this.docHeight = function () {
+        return $(document).height();
+      }
+      this.height = function () {
+        return view.height();
+      }
+      this.lastWindow = function () {
+        return lastWin;
+      }
+      this.scrollTop = function () {
+        return (isAnimating ? newScrollTop : view.scrollTop());
+      }
+      this.scrollToPosition = function(scrollTo, win) {
+        if (scrollTo === null || (!isAnimating && view.scrollTop() === scrollTo)) return;
+        
+        if (!isAnimating || scrollTo !== newScrollTop) {
+          if (timeout) clearTimeout(timeout);
+          // Keep trying recursively until it works.  (Normally only one extra time should suffice)
+          isAnimating = true;
+          newScrollTop = scrollTo;
+          lastWin= win;
+          var completeCalled = false;
+          
+          $('html:not(:animated),body:not(:animated)').stop(true).animate({scrollTop: newScrollTop }, options.snapSpeed, function () { 
+            isAnimating = false;
+            completeCalled = true;
+            options.onSnapComplete(win);
+          });
+        }
+      }
+      this.scrollToPositionDelay = function (scrollTo, win) {
+        if (scrollTo === null) return;
+        if (timeout) clearTimeout(timeout);
+        timeout = setTimeout(function() {
+          self.scrollToPosition(scrollTo, win);
+        }, options.snapInterval);
+      }
+    })($w);
+  
+    var _snapWindow = function(dir){
       // check for when user has stopped scrolling, & do stuff
       if(options.snapping){
-        var stats = new WinStats(_getCurrentWindow(), $w); 
+        var stats = new WinStats(_getCurrentWindow(), viewport); 
         var scrollTo = stats.snapPosition();
-        if (scrollTo === null) return;
-            
-        t = setTimeout(function(){
-          var completeCalled = false;
-          // animate to top of visible window
-          $('html:not(:animated),body:not(:animated)').animate({scrollTop: scrollTo }, options.snapSpeed, function(){
-            if(!completeCalled){
-              if(t){clearTimeout(t);}
-              t = null;
-              completeCalled = true;
-              options.onSnapComplete(stats.window());
-            }
-          });
-        }, options.snapInterval);
+        viewport.scrollToPositionDelay(scrollTo, stats.window());
       }
     };
 

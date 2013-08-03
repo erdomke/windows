@@ -9,105 +9,110 @@
   <body>
 
     <!-- NOTE: each "window" is a section element with class .window -->
-
-    <section id="0" class="window">
+    
+    <section class="window">
       <div class="content">
         <h1>windows</h1>
-        <h2>a handy, loosely-coupled jQuery plugin for full-screen scrolling windows</h2>
+        <p>a handy, loosely-coupled jQuery plugin for scrolling windows</p>
+        <p>&nbsp;</p>
+        <p>&nbsp;</p>
+        <p style="text-align:right;"><small>navigate using the scroll bar, mouse wheel, or keyboard</small></p>
       </div>
     </section>
 
-    <section id="1" class="window">
+    <section class="window">
       <div class="content">
-        <h2>
-        project root<br/>
-        | -- css<br/>
-        | -- | -- main.css (compiled)<br/>
-        | -- js<br/>
-        | -- | -- <span class="highlight">jquery.windows.js</span><br/>
-        | -- scss<br/>
-        | -- | -- <span class="highlight">main.scss</span><br/>
-        | -- <span class="highlight">index.html</span>
-        </h2>
-      </div>
-    </section>
-
-    <section id="2" class="window">
-      <div class="content">
-        <h2>How it works</h2>
-        <div class="explanation">This is a light bootstrap that sets up:
-          <ul>
-            <li>- the basic SASS for sequential full screen windows</li>
-            <li>- a jQuery plugin for managing their positions as the user scrolls</li>
-          </ul>
-          The plugin simply opens up a handy API for position management, provides callbacks, and will allow for window snapping.  No CSS is applied to the callee.
-        </div>
-      </div>
-    </section>
-    
-    <section class="window" style="height:50%">
-      <div class="content">
-        Partial window
+        <h2>windows can take up the full screen <small>(like this one)</small></h2>
       </div>
     </section>
     
     <section class="window" style="height:30%">
       <div class="content">
-        Smaller partial window
-      </div>
-    </section>
-    
-    <section class="window" style="height:150%">
-      <div class="content">
-        Large window
-      </div>
-    </section>
-    
-    <section class="window" style="height:250%">
-      <div class="content">
-        Really large window
+        <h2>... or they can take up a small portion of the screen</h2>
       </div>
     </section>
 
-    <section id="3" class="window">
-      <pre>
-        $('.window').windows({
-            snapping: true,
-            snapSpeed: 500,
-            snapInterval: 1100,
-            onScroll: function(scrollPos){
-                // scrollPos:Number
-            },
-            onSnapComplete: function($el){
-                // after window ($el) snaps into place
-            },
-            onWindowEnter: function($el){
-                // when new window ($el) enters viewport
-            }
-        });
-      </pre>
-    </section>
-
-    <section id="4" class="window">
+    <section class="window" style="height:200%">
       <div class="content">
-        <h1>api</h1>
+        <h2>...</h2>
+        <h2>or</h2>
+        <h2>they</h2>
+        <h2>can</h2>
+        <h2>take</h2>
+        <h2>up</h2>
+        <h2>more</h2>
+        <h2>than</h2>
+        <h2>one</h2>
+        <h2>screen</h2>
+      </div>
+    </section>
+    
+    <section class="window">
+      <div class="content">
+        <h2>instructions</h2>
+        <h3>markup</h3>
+        <p>use whatever markup you want, e.g.</p>
         <pre>
-            // returns ratio 0-1
-            $('.window:eq(0)').ratioVisible();
+&lt;section class="window"&gt;
+  Some content
+&lt;/section&gt;
+&lt;section class="window"&gt;
+  Some more content
+&lt;/section&gt;
+        </pre>
+      </div>
+    </section>
+    
+    <section class="window">
+      <div class="content">
+        <h2>instructions</h2>
+        <h3>configuration</h3>
+        <p>use the appropriate selector to find your windows, and call the <code>windows()</code> method</p>
+        <pre>
+&lt;script src="jquery.windows.js"&gt;&lt;/script&gt;
 
-            // returns boolean of whether or not is visible on screen
-            $('.window:eq(0)').isOnScreen();
-
-            // get most visible window
-            $('.window').getCurrentWindow();
-
-
+&lt;script&gt;
+$('.window').windows({
+  snapping: true,     // Turn on snapping
+  snapSpeed: 500,     // How quickly to snap to a window
+  snapInterval: 1100, // Delay after scroll completes before snapping starts
+  onScroll: function(scrollPos){
+    // scrollPos:Number
+  },
+  onSnapComplete: function($el){
+    // after window ($el) snaps into place
+  },
+  onWindowEnter: function($el){
+    // when new window ($el) enters viewport
+  }
+});
+&lt;/script&gt;
         </pre>
       </div>
     </section>
 
-    <section id="5" class="window">
+    <section class="window">
       <div class="content">
+        <h2>api</h2>
+        <pre>
+// returns ratio 0-1
+$('.window:eq(0)').ratioVisible();
+
+// returns boolean of whether or not is visible on screen
+$('.window:eq(0)').isOnScreen();
+
+// get most visible window
+$('.window').getCurrentWindow();
+        </pre>
+      </div>
+    </section>
+
+    <section class="window">
+      <div class="content">
+        <h2>credits</h2>
+        
+        <p>original code and inspiration from @nick-jonas [<a href="http://www.workofjonas.com">http://www.workofjonas.com</a>]</p>
+        
         <a href="http://www.github.com/nick-jonas/windows/tarball/master" title="Download Me!" id="btn-wrap">
           <span class="title">Download Me</span>
           <div id="info">
@@ -124,7 +129,7 @@
     </section>
 
     
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+    <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
     <script src="../bin/jquery.windows.js"></script>
     
     <script>

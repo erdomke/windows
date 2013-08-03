@@ -32,7 +32,7 @@ html, body {
 }
 .content, .sidebar {
   display: table-cell; 
-  padding:8%;
+  padding:3% 8%;
 }
 .window .content {
   vertical-align: middle; 

@@ -1,0 +1,17 @@
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+.window {
+  width: 100%;
+  min-height: 100%;
+  display:table;
+}
+.content, .sidebar {
+  display: table-cell; 
+}
+.window .content {
+  vertical-align: middle; 
+  margin:auto 0;
+}

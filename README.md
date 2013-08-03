@@ -6,12 +6,18 @@ a handy, loosely-coupled jQuery plugin for scrolling windows
 Demonstration
 =============
 
-[Demo](http://erdomke.github.io/windows)
+* [Demo](http://erdomke.github.io/windows)
+
+Download
+========
+
+* [jquery.windows.js](https://raw.github.com/erdomke/windows/master/bin/jquery.windows.js)
+* [jquery.windows.min.js](https://raw.github.com/erdomke/windows/master/bin/jquery.windows.min.js)
 
 Instructions
 ============
 
-Use whatever markup you want:
+Use whatever markup you want.  For example, you could to something like:
 
 ```html
 <section class="window">
@@ -25,6 +31,7 @@ Use whatever markup you want:
 To initialize the plugin, use the appropriate selector to find your windows, and call the `windows()` method
 
 ```html
+<script src="jquery.js"></script>
 <script src="jquery.windows.js"></script>
 
 <script>
@@ -48,7 +55,7 @@ $('.window').windows({
   }
 });
 </script>
-```html
+```
     
 Once initialized, the following API calls can be made:
 

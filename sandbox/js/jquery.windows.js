@@ -48,11 +48,11 @@
   
     $.fn[pluginName].defaults = {
       snapping: true,
-      scrollSpeed: 500,
-      scrollDelay: 1100,
+      scrollSpeed: 200,
+      scrollDelay: 300,
       enableKeys: true,
       easing: 'swing',
-      transition: 'curtain',
+      transition: 'fade',
       zIndex: 1000,
       onViewChangeStart: function () {},
       onViewChangeEnd: function () {}
@@ -62,78 +62,121 @@
       return (win.height() < view.height() ? (view.height() - win.height()) / 2 : 0);
     }
   
-    function getScrollTarget(scrollTop, callback) {
+    function ScrollCalc(scrollTop, callback) {
       var start = 0,
           end = baseOffset,
           i = 0
           isPercent = false,
           viewHeight = $w.height(),
-          posPercent = 0,
           result = null,
           relPos = -1;
       
-      while (i < $windows.length) {
-        start = end;
-        isPercent = !isPercent && $windows[i].height() > viewHeight;
-        end += isPercent ? 
-                  $windows[i].height() - viewHeight :
-                  ($windows[i].height() > viewHeight ? 
-                    viewHeight : 
-                    $windows[i].height() + screenOffset($windows[i], $w) - (i+1 < $windows.length ? screenOffset($windows[i+1], $w) : 0)) ;
-        posPercent = (scrollTop - start) / (end - start);
-        if (posPercent >= 0 && posPercent < 1) {
-          result = isPercent ?
-                      { win : $windows[i], snap : scrollTop, percent : posPercent, pos : i } : 
-                      (posPercent >= 0.5 ?
-                        { win : $windows[i+1], snap : end, percent : 0, pos : i+1 } :
-                        { win : $windows[i], snap : start, percent : 0, pos : i });
-        }
-        if (!isPercent) {
-          if (result) relPos++;
-          if (callback) callback.call($windows[i], $windows[i], relPos, i);
-          i++;
+      function loop(alg) {
+        while (i < $windows.length) {
+          start = end;
+          isPercent = !isPercent && $windows[i].height() > viewHeight;
+          end += isPercent ? 
+                    $windows[i].height() - viewHeight :
+                    ($windows[i].height() > viewHeight ? 
+                      viewHeight : 
+                      $windows[i].height() + screenOffset($windows[i], $w) - (i+1 < $windows.length ? screenOffset($windows[i+1], $w) : 0)) ;
+          if (alg() && !callback) break;
+          if (!isPercent) {
+            if (result) relPos++;
+            if (callback) callback.call($windows[i], $windows[i], relPos, i);
+            i++;
+          }
         }
       }
-      return result;
-    }
-  
-    function offsetView(info, scrollTop, offset) {
-      var dist = info.win.height() - view.height();
-      var start = scrollTop - info.percent * dist;
-      var percent = Math.min(Math.max((scrollTop + offset - start) / dist, 0), 1);
-      return percent * dist + start;
+      
+      this.closestSnap = function() {
+        loop(function() {
+          var posPercent = (scrollTop - start) / (end - start);
+          if (posPercent >= 0 && posPercent < 1) {
+            result = isPercent ?
+                        { win : $windows[i], snap : scrollTop, percent : posPercent, pos : i } : 
+                        (posPercent >= 0.5 ?
+                          { win : $windows[i+1], snap : end, percent : 0, pos : i+1 } :
+                          { win : $windows[i], snap : start, percent : 0, pos : i });
+            return true;
+          }
+          return false;
+        });
+        return result;
+      }
+      this.nextView = function() {
+        loop(function() {
+          if (scrollTop >= start && scrollTop < end) {
+            if (isPercent) {
+              var posPercent = Math.min((scrollTop + viewHeight - start) / (end - start), 1);
+              result = { win : $windows[i], snap : posPercent * ($windows[i].height() - viewHeight) + start, percent : posPercent, pos : i };
+            } else {
+              result = ( i >= $windows.length - 1 ? null : { win : $windows[i+1], snap : end, percent : 0, pos : i+1 });
+            }
+            return true;
+          }
+          return false;
+        });
+        return result;
+      }
+      this.prevView = function() {
+        loop(function() {
+          if (scrollTop > start && scrollTop <= end) {
+            if (isPercent) {
+              var posPercent = Math.max((scrollTop - viewHeight - start) / (end - start), 0);
+              result = { win : $windows[i], snap : posPercent * ($windows[i].height() - viewHeight) + start, percent : posPercent, pos : i };
+            } else {
+              result = { win : $windows[i], snap : start, percent : 0, pos : i };
+            }
+            return true;
+          }
+          return false;
+        });
+        return result;
+      }
     }
   
     function goToNextView() {
-      var other;
-      var result = getScrollTarget(view.scrollTop(), function(win, rel, i) {
-        if (rel === 1) other = win;
-      });
-      if (result.win.height() > view.height() && result.percent < 1) {
-        offsetView
-      }
-      console.log(result);
-      //view.scrollToPosition(result.snap, result.win);
+      var result = new ScrollCalc(view.scrollTop()).nextView();
+      if(result) view.scrollToPosition(result.snap, result.win);
       return true;
     }
     function goToPrevView() {
-      var result = getScrollTarget(view.scrollTop());
-      console.log(result);
-      //view.scrollToPosition(result.snap, result.win);
+      var result = new ScrollCalc(view.scrollTop()).prevView();
+      if(result) view.scrollToPosition(result.snap, result.win);
       return true;
     }
   
     function performAnim() {
       var fixedHeight = 0;
-      var result = getScrollTarget($w.scrollTop(), function(win, rel, i) {
-        if (rel === 1 || i === $windows.length - 1) {
-          fixedHeight += win.css({'position' : 'fixed', 'top' : screenOffset(win, $w) }).height();
-        } else {
-          win.css({'position' : 'relative', 'top' : 0 });
+      var fadeWin = null;
+      var result = new ScrollCalc($w.scrollTop(), function(win, rel, i) {
+        switch (opts.transition) {
+          case 'curtain':
+            if (rel === 1 || i === $windows.length - 1) {
+              fixedHeight += win.css({'position' : 'fixed', 'top' : screenOffset(win, $w) }).height();
+            } else {
+              win.css({'position' : 'relative', 'top' : 0 });
+            }
+            break;
+          case 'fade':
+            if (rel === 0) {
+              fixedHeight += win.css({'position' : 'fixed', 'top' : screenOffset(win, $w) }).height();
+              fadeWin = win;
+            } else if (rel === 1 || i === $windows.length - 1) {
+              fixedHeight += win.css({'position' : 'fixed', 'top' : screenOffset(win, $w) }).height();
+            } else {
+              win.css({'position' : 'relative', 'top' : 0 });
+            }
+            break;
         }
-      });
+      }).closestSnap();
       $scrollFix.height(fixedHeight);
       if (result.snap !== view.scrollTop()) {
+        if (opts.transition === 'fade' && fadeWin && fadeWin !== result.win) {
+          //console.log(2 * (result.snap - $w.scrollTop()) / $w.height());
+          //fadeWin.css('opacity', 2 * (result.snap - $w.scrollTop()) / $w.height());
+        }
         view.scrollToPositionDelay(result.snap, result.win);
       }
     }

@@ -138,26 +138,12 @@ $('.window:eq(0)').windows('snapPosition');
 
     
     <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
-    <script src="../bin/jquery.windows.js"></script>
+    <script src="js/jquery.windows.js"></script>
     
     <script>
 
       $(document).ready(function(){
-
-        var $windows = $('.window');
-
-        $windows.windows({
-          snapping: true,
-          scrollSpeed: 100,
-          scrollDelay: 300,
-          onViewChangeStart: function($el, view) {
-            console.log('start ' + view);
-          },
-          onViewChangeEnd: function($el, view) {
-            console.log('end   ' + view);
-          }
-        });
-
+        $('.window').windows();
       });
     </script>
 

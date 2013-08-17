@@ -11,13 +11,14 @@
 
 ;(function ( $, window, document, undefined ) {
 
-
-var that = this,
+    var that = this,
         pluginName = 'windows',
+        winIdName = 'win-id',
         options = {},
         $w = $(window),
         s = 0, // scroll amount
-        $windows = [];
+        $windows = [],
+        $winHash = {};
 
     /**
      * Constructor
@@ -25,15 +26,22 @@ var that = this,
      * @param {Object} customOptions        options to override defaults
      */
     function windows( element, customOptions ) {
-
-      this.element = element;
+      this.element = $(element);
       options = options = $.extend( {}, $.fn[pluginName].defaults, customOptions) ;
       this._defaults = $.fn[pluginName].defaults;
       this._name = pluginName;
       $windows.push(element);
-      var isOnScreen = new WinStats($(element),viewport).isOnScreen();
-      $(element).data('onScreen', isOnScreen);
-      if(isOnScreen) options.onWindowEnter($(element));
+      
+      var anchor = this.element.children().first().filter('a');
+      if (anchor.length === 1 && anchor.attr('id')) {
+        this.element.data(winIdName, anchor.attr('id'));
+        anchor.remove();
+      } else if (this.element.attr('id')) {
+        this.element.data(winIdName, this.element.attr('id'));
+      } else {
+        this.element.data(winIdName, winIdName + '-' + $windows.length);
+      }
+      $winHash[this.element.data(winIdName)] = this.element;
     }
   
     // PRIVATE API ----------------------------------------------------------
@@ -122,25 +130,11 @@ var that = this,
      * @return null
      */
     var _onScroll = function(){
-      s = $w.scrollTop();
-
       _snapWindow();
-
-      options.onScroll(s);
-
-      // notify on new window entering
-      $.each($windows, function(i){
-        var $this = $(this),
-            isOnScreen = new WinStats($this,viewport).isOnScreen();
-        if(isOnScreen){
-          if(!$this.data('onScreen')) options.onWindowEnter($this);
-        }
-        $this.data('onScreen', isOnScreen);
-      });
     };
 
     var _onResize = function(){
-        _snapWindow();
+      _snapWindow();
     };
   
     var _onKeydown = function(e) {
@@ -225,6 +219,27 @@ var that = this,
       return result;
     }
     
+    var _getView = function (win, scrollTop) {
+      var excess = win.height() - viewport.height();
+      if (excess > 0) {
+        var stats = new WinStats(win, viewport);
+        var perc = Math.round((scrollTop - win.offset().top) * 100 / excess);
+        return win.data(winIdName) + (perc > 0 ? '%' + perc : '');
+      } else {
+        return win.data(winIdName)
+      }
+    }
+    var _setView = function (view) {
+      var parts = view.split('%');
+      var win = $winHash[parts[0]];
+      var scrollTo = win.offset().top;
+      var excess = win.height() - viewport.height();
+      if (parts.length > 1 && excess > 0) {
+        scrollTo += parseInt(parts[1]) * excess / 100;
+      }
+      viewport.scrollToPosition(scrollTo, win);
+    }
+    
     var viewport = new (function (view) {
       var isAnimating = false;
       var newScrollTop;
@@ -253,13 +268,13 @@ var that = this,
           isAnimating = true;
           newScrollTop = scrollTo;
           lastWin= win;
-          var completeCalled = false;
-          
+                    
+          var completeCalled = !_onViewChangeStart(win, newScrollTop, true);
           $('html:not(:animated),body:not(:animated)').stop(true).animate({scrollTop: newScrollTop }, options.scrollSpeed, options.easing, function () { 
             isAnimating = false;
             if (!completeCalled) {
               completeCalled = true;
-              options.onSnapComplete(win);
+              options.onViewChangeEnd(win, _getView(win, newScrollTop));
             }
           });
         }
@@ -273,14 +288,31 @@ var that = this,
       }
     })($w);
   
-    var _snapWindow = function(dir){
+    var _snapWindow = function(){
       // check for when user has stopped scrolling, & do stuff
       if(options.snapping){
         var stats = new WinStats(_getCurrentWindow(), viewport); 
+        var win = stats.window();
         var scrollTo = stats.snapPosition();
-        viewport.scrollToPositionDelay(scrollTo, stats.window());
+        if (scrollTo === viewport.scrollTop()) {
+          if(_onViewChangeStart(win, scrollTo, true)) options.onViewChangeEnd(win, _getView(win, scrollTo));
+        } else {
+          viewport.scrollToPositionDelay(scrollTo, win);
+        }
       }
     };
+  
+    var _onViewChangeStart = function (win, scrollTo) {
+      var view = _getView(win, scrollTo);
+      if (view === _onViewChangeStart.lastView) {
+        return false;
+      } else {
+        _onViewChangeStart.lastView = view;
+        options.onViewChangeStart(win, view);
+        return true;
+      }
+    }
+    
 
 
     /**
@@ -289,17 +321,22 @@ var that = this,
      * @param  {Object} options
      * @return {jQuery Object}
      */
-    $.fn[pluginName] = function ( options ) {
-
-      $w.scroll(_onScroll);
-      $w.resize(_onResize);
-      $w.keydown(_onKeydown);
-
+    $.fn[pluginName] = function ( options, arg ) {
       if ('string' === typeof options) {
         var result = [];
         switch (options) {
           case 'getCurrentWindow':
             return _getCurrentWindow();
+          case 'getId':
+            this.each(function(i) {
+              result.push($(this).data(winIdName));
+            });
+            break;
+          case 'getView':
+            return _getView(_getCurrentWindow(), viewport.scrollTop());
+          case 'setView':
+            _setView(arg);
+            return this;
           case 'isOnScreen':
             this.each(function(i) {
               result.push(new WinStats($(this), viewport).isOnScreen());
@@ -344,9 +381,12 @@ var that = this,
       scrollDelay: 1100,
       enableKeys: true,
       easing: 'swing',
-      onScroll: function(){},
-      onSnapComplete: function(){},
-      onWindowEnter: function(){}
+      onViewChangeStart: function () {},
+      onViewChangeEnd: function () {}
     }
+    
+    $w.scroll(_onScroll);
+    $w.resize(_onResize);
+    $w.keydown(_onKeydown);
 
 })( jQuery, window, document );

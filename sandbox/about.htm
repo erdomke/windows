@@ -5,25 +5,29 @@
     <meta charset="UTF-8">
     <title>windows</title>
 
-    <link rel="stylesheet" href="css/demo-curtain.css">
+    <link href='http://fonts.googleapis.com/css?family=Overlock+SC|Oxygen:400,700' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="css/about.css">
   </head>
   <body>
 
     <!-- NOTE: each "window" is a section element with class .window -->
     
     <section class="window">
-      <div class="content">
-        <h1>windows</h1>
-        <p>a handy, loosely-coupled jQuery plugin for scrolling windows</p>
-        <p>&nbsp;</p>
-        <p>&nbsp;</p>
-        <p style="text-align:right;"><small>navigate using the scroll bar, mouse wheel, or keyboard</small></p>
+      <div class="content" style="background:url(file:///C:/Users/edomke/Pictures/Backup/PostProcess/People/PortraitSquared_2048.jpg) 50% 0 no-repeat; background-size:cover;vertical-align:bottom">
+        <h1>Eric Domke</h1>
+        <p style="max-width:40%">I am a computer programmer trained as a mechanical engineer who enjoys communing with nature &mdash; often from the seat of a bike or behind the lens of a camera.</p>
       </div>
     </section>
 
     <section class="window">
-      <div class="content">
-        <h2>windows can take up the full screen <small>(like this one)</small></h2>
+      <div class="content" style="background:url(file:///C:/Users/edomke/Pictures/Backup/PostProcess/People/Disconnected_2048.jpg) 0 0% no-repeat;
+                                  background-size:cover;
+                                  vertical-align:top;
+                                  color:white;
+                                  padding-top:12%;">
+        <h2>Open Source Projects</h2>
+        <p>AML Studio</p>
+        <p>Windows</p>
       </div>
     </section>
     
@@ -146,7 +150,9 @@ $('.window:eq(0)').windows('snapPosition');
     <script>
 
       $(document).ready(function(){
-        $('.window').windows();
+        $('.window').windows({
+          curtain: true
+        });
       });
     </script>
 

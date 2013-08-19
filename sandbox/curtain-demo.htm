@@ -1,0 +1,71 @@
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>windows</title>
+
+    <link rel="stylesheet" href="css/demo-curtain.css">
+  </head>
+  <body>
+
+    <!-- NOTE: each "window" is a section element with class .window -->
+    
+    <section class="window">
+      <div class="content" style="background:url(img/eiffel-2.jpg) 50% 0 no-repeat; background-size:cover;text-align:center;color:white;">
+        <h1 style="font-size:500%">windows</h1>
+        <p>a handy, loosely-coupled jQuery plugin for scrolling windows</p>
+      </div>
+    </section>
+
+    <section class="window">
+      <div class="content">
+        <h2 style="text-align:center;">what's 'windows'?</h2>
+        <p style="width:300px;text-align:justify;margin:0 auto;">This plugin allows you to create a single-page website with multiple 'windows' that unroll much like a curtain rises.
+To navigate, you can use your keyboard, the scrollbar, or your mousewheel. For a demonstration of the different effects, scroll into this document.</p>
+      </div>
+    </section>
+
+    <section class="window" style="height:200%">
+      <div style="width:300px;float:left;margin-left:50px;">
+        <div class="affix" style="width:300px;margin-top:200px;">
+          <h2>Here's a fixed title</h2>
+          <p>With a small fixed text. Oh, and you can see my last selected Instagram pictures on the right.</p>
+        </div>
+      </div>
+      <div class="photos-inner" style="margin-left:400px;">
+        <img src="img/stepbystep/1.jpg" alt="">
+        <img src="img/stepbystep/2.jpg" alt="">
+        <img src="img/stepbystep/3.jpg" alt="">
+        <img src="img/stepbystep/4.jpg" alt="">
+        <img src="img/stepbystep/5.jpg" alt="">
+        <img src="img/stepbystep/6.jpg" alt="">
+        <img src="img/stepbystep/7.jpg" alt="">
+        <img src="img/stepbystep/8.jpg" alt="">
+      </div>
+ 
+    </section>
+
+    <section class="window">
+      <div class="content">
+        <h2>credits</h2>
+        <p>original code and inspiration from <a href="http://nick-jonas.github.io/windows/">@nick-jonas</a></p>
+        <p>&nbsp;</p>
+        <h2>View on <a href="https://github.com/erdomke/windows">GitHub</a></h2>
+      </div>
+    </section>
+    
+    <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
+    <script src="js/jquery.windows.js"></script>
+    
+    <script>
+
+      $(document).ready(function(){
+        $('.window').windows({
+          curtain: true
+        });
+      });
+    </script>
+
+  </body>
+</html>

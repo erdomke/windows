@@ -13,10 +13,13 @@
 
     var that = this,
         pluginName = 'windows',
+        winIdName = 'win-id',
         opts = {},
         $windows = [],
+        $winHash = {},
         $scrollFix = null,
-        baseOffset = 0;
+        baseOffset = 0,
+        hashRegistered = false;
   
     /**
      * A really lightweight plugin wrapper around the constructor,
@@ -26,19 +29,52 @@
      */
     $.fn[pluginName] = function ( options, arg ) {
       if ('string' === typeof options) {
-        
+        switch (options) {
+          case 'getView':
+            return getCurrViewName(view.scrollTop());
+          case 'setView':
+            setCurrView(arg);
+            return this;
+          case 'nextView':
+            goToNextView();
+            return this;
+          case 'prevView':
+            goToPrevView();
+            return this;
+        }
       }
       
       opts = $.extend( {}, $.fn[pluginName].defaults, options) ;
+      opts.manageHash = opts.manageHash && jQuery.fn.hashchange;
       var win,
           result = this.each(function(i) {
             win = $(this);
             $windows.push(win);
+            
+            var anchor = win.children().first().filter('a[id]:not([href])');
+            if (win.attr('id')) {
+              win.data(winIdName, win.attr('id'));
+            } else if (opts.manageHash && anchor.length === 1) {
+              win.data(winIdName, anchor.attr('id'));
+              anchor.attr('id', '__' + anchor.attr('id'));
+            } else {
+              win.data(winIdName, winIdName + '-' + $windows.length);
+            }
+            $winHash[win.data(winIdName)] = win;
+            
             win.find(opts.affix).each(function() {
               var $this = $(this);
               $this.data({'affix-top': $this.offset().top - parseFloat($this.css('marginTop').replace(/auto/,0)) - win.offset().top,
-                            'orig-top': parseFloat($this.css('top').replace(/auto/,0))});
+                          'orig-top': parseFloat($this.css('top').replace(/auto/,0))});
             });
+            
+            if (opts.manageHash) {
+              win.find('a[id]:not([href])').each(function() {
+                var anchor = $(this);
+                if (anchor.attr('id').substr(0,2) !== '__') anchor.attr('id', '__' + anchor.attr('id'));
+                anchor.data('affix-top', anchor.offset().top - parseFloat(anchor.css('marginTop').replace(/auto/,0)) - win.offset().top);
+              });
+            }
           });
       
       $windows.sort(function (a, b) {
@@ -49,6 +85,13 @@
         $windows[i].css('z-index', baseIndex--);
       }
       $scrollFix = $('<div style="position:relative;z-index:-1"></div>').appendTo('body');
+      
+      if (opts.manageHash && !hashRegistered) {
+        hashRegistered = true;
+        $w.hashchange(function() {
+          if (!hashMgr.setting) setCurrView(hashMgr.hash());
+        });
+      }
       
       return result;
     };
@@ -63,6 +106,7 @@
       curtain: false,
       affix: '.affix',
       zIndex: 1000,
+      manageHash: false,
       onViewChangeStart: function () {},
       onViewChangeEnd: function () {}
     }
@@ -71,17 +115,23 @@
       return (win.height() < view.height() ? (view.height() - win.height()) / 2 : 0);
     }
   
-    var handlerDefaults = { prevView: null, currView: null, window: null };
-    function forEachView(scrollTop, handlers) {
-      handlers = $.extend( {}, handlerDefaults, handlers) ;
+    function forEachView(scrollTop, viewCallback, winCallback) {
       var s = {
             start : 0,
             end : baseOffset,
             i : 0,
             isPercent : false,
             viewHeight : $w.height(),
+            isPrev : function() {
+              return scrollTop > this.start && scrollTop <= this.end;
+            },
+            isCurr : function() {
+              return scrollTop >= s.start && scrollTop < s.end;
+            }
           },
-          relPos = -1;
+          relPos = -1,
+          winCanExit = !winCallback || 'undefined' === typeof winCallback,
+          viewCanExit = !viewCallback || 'undefined' === typeof viewCallback;
       
       while (s.i < $windows.length) {
         s.start = s.end;
@@ -92,48 +142,105 @@
                     s.viewHeight : 
                     $windows[s.i].height() + screenOffset($windows[s.i], $w) - (s.i+1 < $windows.length ? screenOffset($windows[s.i+1], $w) : 0))) ;
         
-        if (scrollTop > s.start && scrollTop <= s.end && handlers.prevView) handlers.prevView(s);
-        if (scrollTop >= s.start && scrollTop < s.end && handlers.currView) {
-          handlers.currView(s);
-          relPos = 0;
-          if (!handlers.window) break;
-        }
+        viewCanExit = viewCanExit || viewCallback(s);
+        if (s.isCurr()) relPos = 0;
         
         if (!s.isPercent) {
-          if (handlers.window) handlers.window($windows[s.i], relPos, s.i);
+          winCanExit = winCanExit || winCallback($windows[s.i], relPos, s.i);
           if (relPos >= 0) relPos++;
           s.i++;
+        }
+        if (viewCanExit && winCanExit) break;
+      }
+    }
+  
+    function getCurrViewName(scrollTop) {
+      var result = null,
+          prevPercent = false; 
+      forEachView(scrollTop, function (s) {
+        if (s.isPrev()) {
+          prevPercent = s.isPercent;
+        }
+        if (s.isCurr()) {
+          result = $windows[s.i].data(winIdName) + (s.isPercent ? '%' + Math.round(100 * (scrollTop - s.start) / (s.end - s.start)) : (prevPercent ? '%100' : ''));
+        }
+        return !!result;
+      });
+      return result;
+    }
+  
+    function setCurrView(name) {
+      var parts = name.split('%'),
+          elem = $winHash[parts[0]],
+          elemIsWin = elem && 'undefined' !== typeof elem,
+          foundElem = null,
+          viewData = null,
+          nextView = false;
+      if (!elemIsWin) elem = $('a#__' + name);
+
+      if (elem && 'undefined' !== typeof elem) {
+        forEachView($w.scrollTop(), function(s) {
+          if (nextView) {
+            viewData = s;
+            return true;
+          } else if (elemIsWin) {
+            if ($windows[s.i] === elem) {
+              viewData = s;
+              return true;
+            }
+          } else {
+            foundElem = elem.closest($windows[s.i]);
+            if (foundElem.length === 1) {
+              if (s.isPercent && elem.data('affix-top') > (s.end - s.start)) {
+                nextView = true;
+              } else {
+                parts[1] = Math.round(100 * elem.data('affix-top') / (s.end - s.start));
+                viewData = s;
+                return true;
+              }
+            }
+          }
+          return false;
+        });
+
+        if (viewData) {
+          var perc = (viewData.isPercent && parts.length > 1 ? Math.min(Math.max(0, parseInt(parts[1])), 100) : 0);
+          view.scrollToPosition(viewData.start + perc * (viewData.end - viewData.start) / 100, $windows[viewData.i]);
         }
       }
     }
   
-    function closestSnap(scrollTop, handlers) {
-      handlers = $.extend( {}, handlerDefaults, handlers) ;
-      var origCurr = handlers.currView, 
-          result;
-      handlers.currView = function(s) {
-        var posPercent = (scrollTop - s.start) / (s.end - s.start);
-        result = s.isPercent ?
+    function closestSnap(scrollTop, viewCallback, winCallback) {
+      var canExit = !viewCallback || 'undefined' === typeof viewCallback,
+          result = null;
+      forEachView(scrollTop, function(s) {
+        if (s.isCurr()) {
+          var posPercent = (scrollTop - s.start) / (s.end - s.start);
+          result = s.isPercent ?
                   { win : $windows[s.i], snap : scrollTop, percent : posPercent, pos : s.i } : 
                   (posPercent >= 0.5 ?
                     { win : $windows[s.i+1], snap : s.end, percent : 0, pos : s.i+1 } :
                     { win : $windows[s.i], snap : s.start, percent : 0, pos : s.i });
-        if (origCurr) origCurr(s);
-      }
-      forEachView(scrollTop, handlers);
+        }
+        canExit = canExit || viewCallback(s);
+        return canExit && !!result; 
+      }, winCallback);
       return result;
     }
   
     function getNextView() {
       var result;
-      forEachView(view.scrollTop(), { currView : function(s) {
-        if (s.isPercent) {
-          var posPercent = Math.min((view.scrollTop() + s.viewHeight - s.start) / (s.end - s.start), 1);
-          result = { win : $windows[s.i], snap : posPercent * ($windows[s.i].height() - s.viewHeight) + s.start, percent : posPercent, pos : s.i };
-        } else {
-          result = ( s.i >= $windows.length - 1 ? null : { win : $windows[s.i+1], snap : s.end, percent : 0, pos : s.i+1 });
+      forEachView(view.scrollTop(), function(s) {
+        if (s.isCurr()) {
+          if (s.isPercent) {
+            var posPercent = Math.min((view.scrollTop() + s.viewHeight - s.start) / (s.end - s.start), 1);
+            result = { win : $windows[s.i], snap : posPercent * ($windows[s.i].height() - s.viewHeight) + s.start, percent : posPercent, pos : s.i };
+          } else {
+            result = ( s.i >= $windows.length - 1 ? null : { win : $windows[s.i+1], snap : s.end, percent : 0, pos : s.i+1 });
+          }
         }
-      }});
+        return !!result;
+      });
       return result;
     }
   
@@ -145,14 +252,17 @@
   
     function getPrevView() {
       var result;
-      forEachView(view.scrollTop(), { prevView : function(s) {
-        if (s.isPercent) {
-          var posPercent = Math.max((view.scrollTop() - s.viewHeight - s.start) / (s.end - s.start), 0);
-          result = { win : $windows[s.i], snap : posPercent * ($windows[s.i].height() - s.viewHeight) + s.start, percent : posPercent, pos : s.i };
-        } else {
-          result = { win : $windows[s.i], snap : s.start, percent : 0, pos : s.i };
+      forEachView(view.scrollTop(), function(s) {
+        if (s.isPrev()) {
+          if (s.isPercent) {
+            var posPercent = Math.max((view.scrollTop() - s.viewHeight - s.start) / (s.end - s.start), 0);
+            result = { win : $windows[s.i], snap : posPercent * ($windows[s.i].height() - s.viewHeight) + s.start, percent : posPercent, pos : s.i };
+          } else {
+            result = { win : $windows[s.i], snap : s.start, percent : 0, pos : s.i };
+          }
         }
-      }});
+        return !!result;
+      });
       return result;
     }
   
@@ -167,9 +277,8 @@
       var fixedHeight = 0;
       if ('undefined' === typeof scrollTop) scrollTop = $w.scrollTop();
       
-      var result = closestSnap(scrollTop, 
-      { 
-        currView: function(s) {
+      var result = closestSnap(scrollTop, function(s) {
+        if (s.isCurr()) {
           var excess = $windows[s.i].height() - s.viewHeight;
           if (s.i !== $windows.length) {
             if (!s.isPercent && (opts.fade && !opts.curtain || opts.curtain && s.i === $windows.length - 1 )) {
@@ -189,26 +298,25 @@
                             {'position': 'relative', 'top': $(this).data('orig-top') + excess }); 
             });
           }
-        }, 
-        window: function(win, rel, i) {
-          if (rel === 1 && (opts.fade || opts.curtain)) {
-            fixedHeight += win.css({'position' : 'fixed', 
-                                    'top' : screenOffset(win, $w),
-                                    'opacity' : 1}).height();
-          } else if (rel !== 0) {
-            win.css({'position' : 'relative', 
-                     'top' : 0,
-                     'opacity' : 1});
-          }
-          if (rel !== 0) {
-            win.find(opts.affix).each(function() {
-              if ($(this).css('position') === 'fixed') {
-                $(this).css(win.css('position') === 'fixed' ? 
-                            {'position': 'fixed', 'top': $(this).data('affix-top') } : 
-                            {'position': 'relative', 'top': $(this).data('orig-top') }); 
-              }
-            });
-          }
+        }
+      }, function (win, rel, i) {
+        if (rel === 1 && (opts.fade || opts.curtain)) {
+          fixedHeight += win.css({'position' : 'fixed', 
+                                  'top' : screenOffset(win, $w),
+                                  'opacity' : 1}).height();
+        } else if (rel !== 0) {
+          win.css({'position' : 'relative', 
+                   'top' : 0,
+                   'opacity' : 1});
+        }
+        if (rel !== 0) {
+          win.find(opts.affix).each(function() {
+            if ($(this).css('position') === 'fixed') {
+              $(this).css(win.css('position') === 'fixed' ? 
+                          {'position': 'fixed', 'top': $(this).data('affix-top') } : 
+                          {'position': 'relative', 'top': $(this).data('orig-top') }); 
+            }
+          });
         }
       });
       
@@ -253,6 +361,20 @@
       }
     };
   
+    var hashMgr = new (function() {
+      this.setting = false;
+      
+      this.hash = function(value) {
+        if ('undefined' === typeof value) {
+          return window.location.hash.substr(1);
+        } else {
+          this.setting = true;
+          window.location.hash = '#' + value;
+          this.setting = false;
+        }
+      }
+    })();
+  
     var $w = $(window);
     var view = new (function (view) {
       var isAnimating = false;
@@ -276,6 +398,7 @@
           newScrollTop = scrollTo;
                     
           //var completeCalled = !_onViewChangeStart(win, newScrollTop, true);
+          hashMgr.hash(getCurrViewName(newScrollTop));
           $('html:not(:animated),body:not(:animated)').stop(true).animate({scrollTop: newScrollTop }, opts.scrollSpeed, opts.easing, function () { 
             isAnimating = false;
             /*if (!completeCalled) {

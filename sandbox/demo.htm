@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <title>windows</title>
 
-    <link rel="stylesheet" href="css/demo-curtain.css">
+    <link rel="stylesheet" href="css/demo-main.css">
   </head>
   <body>
 
@@ -34,17 +34,18 @@
     </section>
 
     <section class="window" style="height:200%">
+      <a id="long-win"></a>
       <div class="content" style="width:50%">
         <h2>...</h2>
         <h2>or</h2>
         <h2>they</h2>
-        <h2>can</h2>
+        <h2>can <a id="long-win-can"></a></h2>
         <h2>take</h2>
         <h2>up</h2>
         <h2>more</h2>
-        <h2>than</h2>
+        <h2>than <a id="long-win-than"></a></h2>
         <h2>one</h2>
-        <h2>screen</h2>
+        <h2>screen <a id="long-win-screen"></a></h2>
       </div>
       <div class="affix" style="width:50%;position:relative;top:200px">
         Fixed Sidebar
@@ -142,11 +143,14 @@ $('.window:eq(0)').windows('snapPosition');
     
     <script src="http://code.jquery.com/jquery-1.10.2.min.js"></script>
     <script src="js/jquery.windows.js"></script>
+    <script src="js/jquery.ba-hashchange.min.js "></script>
     
     <script>
 
       $(document).ready(function(){
-        $('.window').windows();
+        $('.window').windows({
+          manageHash: true
+        });
       });
     </script>
 
